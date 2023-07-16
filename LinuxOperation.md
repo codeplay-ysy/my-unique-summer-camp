@@ -133,4 +133,30 @@
 * pkill -v(--inverse) 杀死不匹配的进程
 * pkill -t(--terminal) 按照终端号杀死进程
 * pkill用于杀死某类或某个用户的进程
-  
+##端口
+端口是指计算机与外部通信的接口，端口号是一个16位的无符号整数，范围是0-65535。端口号分为三类，分别是公认端口、注册端口和动态端口。公认端口的范围是0-1023，注册端口的范围是1024-49151，动态端口的范围是49152-65535。公认端口是指某些服务的默认端口，例如80端口是http服务的默认端口，22端口是ssh服务的默认端口。注册端口是指某些服务的默认端口，但是并不是所有的系统都会使用这些端口，例如mysql的默认端口是3306，但是并不是所有的系统都会使用3306端口。动态端口是指系统自动分配的端口，范围是49152-65535。
+* TCP端口和UDP端口:由于TCP和UDP 两个协议是独立的，因此各自的端口号也相互独立，比如TCP有235端口，UDP也 可以有235端口，两者并不冲突
+##端口查看:
+* netstat -a 显示所有端口
+* netstat -t 显示tcp端口
+* netstat -u 显示udp端口
+* netstat -l 显示监听状态的端口
+* netstat -p 显示进程信息
+* 还可以用lsof -i:端口号查看指定端口的进程信息
+* fuser -v 端口号/协议 显示指定端口的进程信息
+##Systemd守护进程
+这一部分是根据阮一峰的教程学习的，不在此记录
+##terminal和shell
+terminal过去是指一台计算机，由于主机设备昂贵，所以通过多个终端串口连接到主机上，用于输入和输出数据，降低成本。而shell是一个命令解释器，用于解释用户输入的命令，然后执行命令。现在的terminal是指一个模拟终端，用于输入和输出数据，而shell是指一个命令解释器，用于解释用户输入的命令，然后执行命令。zsh，bash，fish等都是shell的一种。
+##防火墙
+ Arch的防火墙由 netfilter 和 iptables 两个组件组成
+  ### iptables
+* iptables 通过创建不同的过滤链来处理数据包。常见的过滤链有：INPUT、FORWARD 和 OUTPUT。INPUT 链用于处理目标地址是本机的数据包，FORWARD 链用于处理目标地址不是本机的数据包，OUTPUT 链用于处理源地址是本机的数据包。当数据包到达时，iptables 会根据数据包的目标地址和目标端口来查找相应的过滤链，然后按照过滤链中的规则来处理数据包。如果数据包没有匹配任何规则，iptables 就会按照默认策略来处理数据包。默认策略一般是丢弃（DROP）或放行（ACCEPT）。
+#### filter表:
+* filter 表用于过滤数据包，它包含三个过滤链：INPUT、FORWARD 和 OUTPUT。filter 表是默认的表，如果没有指定表，iptables 就会使用 filter 表。
+#### nat表:
+* nat 表用于修改数据包的源地址和目标地址，它包含三个过滤链：PREROUTING、OUTPUT 和 POSTROUTING。PREROUTING 链用于修改数据包的目标地址，OUTPUT 链用于修改数据包的源地址，POSTROUTING 链用于修改数据包的源地址和目标地址。
+#### mangle表:
+* mangle 表用于修改数据包的 IP 头部，它包含五个过滤链：PREROUTING、INPUT、FORWARD、OUTPUT 和 POSTROUTING。PREROUTING 链用于修改数据包的 IP 头部，INPUT 链用于修改数据包的 IP 头部，FORWARD 链用于修改数据包的 IP 头部，OUTPUT 链用于修改数据包的 IP 头部，POSTROUTING 链用于修改数据包的 IP 头部。
+#### raw表:
+* raw 表用于配置数据包的连接追踪机制，它包含两个过滤链：PREROUTING 和 OUTPUT。PREROUTING 链用于配置数据包的连接追踪机制，OUTPUT 链用于配置数据包的连接追踪机制。
