@@ -1,9 +1,11 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,8 +28,19 @@ type User struct {
 	CreatedAt time.Time
 }
 
+// 检查邮箱是否已被注册
+func IsEmailRegistered(email string) bool {
+	var count int
+	Db.Model(&User{}).Where("email = ?", email).Count(&count)
+	return count > 0
+}
+
 // 注册用户
 func RegisterUser(name, email, password string, gender Gender) error {
+	// 检查邮箱是否已被注册
+	if IsEmailRegistered(email) {
+		return errors.New("该邮箱已被注册")
+	}
 	// 创建用户结构
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -83,4 +96,41 @@ func GetUserByEmail(email string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+// 修改密码
+func UpdatePassword(email, newPassword string) error {
+	// 根据邮箱查找用户
+	user, err := GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+
+	// 使用bcrypt对密码进行哈希加密
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	// 更新用户密码
+	user.Password = string(hashedPassword)
+	err = Db.Save(&user).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// 获取当前登录用户的 ID
+func GetLoggedInUserID(c *gin.Context) (uint, bool) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		return 0, false
+	}
+	id, ok := userID.(uint)
+	if !ok {
+		return 0, false
+	}
+	return id, true
 }

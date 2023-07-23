@@ -1,31 +1,39 @@
 package models
 
 import (
+	"chat/utils"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Post struct {
-	ID         uint      `gorm:"primary_key"`
-	Title      string    `gorm:"not null"`
-	Content    string    `gorm:"not null"`
-	AuthorID   uint      `gorm:"not null"`
-	CreatedAt  time.Time `gorm:"not null"`
-	UpdatedAt  time.Time `gorm:"not null"`
-	DailyViews uint      `gorm:"not null;default:0"`
-	TotalViews uint      `gorm:"not null;default:0"`
+	ID            uint      `gorm:"primary_key"`
+	Title         string    `gorm:"not null"`
+	Content       string    `gorm:"not null"`
+	AuthorID      uint      `gorm:"not null"`
+	CreatedAt     time.Time `gorm:"not null"`
+	UpdatedAt     time.Time `gorm:"not null"`
+	DailyViews    uint      `gorm:"not null;default:0"`
+	TotalViews    uint      `gorm:"not null;default:0"`
+	ShareLink     string    `gorm:"not null;unique"`
+	Comments      []Comment
+	AnonymousName map[string]int `gorm:"-"`
 }
 
 // 创建帖子
 func CreatePost(title, content string, authorID uint) error {
+	// 生成唯一的分享链接
+	shareLink := utils.GenerateUniqueLink()
+
 	post := Post{
 		Title:     title,
 		Content:   content,
 		AuthorID:  authorID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
+		ShareLink: shareLink,
 	}
 
 	// 将帖子信息保存到数据库
@@ -89,8 +97,8 @@ func UpdatePost(postID, authorID uint, title, content string) error {
 }
 
 // 根据关键词搜索帖子
-func SearchPostsByKeyword(keyword string) ([]gin.H, error) {
-	var posts []gin.H
+func SearchPostsByKeyword(keyword string) ([]Post, error) {
+	var posts []Post
 	err := Db.Table("posts").Select("id, title, authorid, totalviews").Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%").Scan(&posts).Error
 	if err != nil {
 		return nil, err
@@ -99,7 +107,7 @@ func SearchPostsByKeyword(keyword string) ([]gin.H, error) {
 }
 
 // 根据时间搜索帖子
-func GetPostsByCreateTime(createTime time.Time) ([]Post, error) {
+func SearchPostsByCreateTime(createTime time.Time) ([]Post, error) {
 	var posts []Post
 	err := Db.Model(&Post{}).
 		Select("title, createdat, authorid, totalviews, id").
@@ -111,8 +119,43 @@ func GetPostsByCreateTime(createTime time.Time) ([]Post, error) {
 	return posts, nil
 }
 
+// 获取前十个热门帖子
+func GetHotPosts() ([]Post, error) {
+	var posts []Post
+	err := Db.Order("total_views desc").Limit(10).Find(&posts).Error
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
+}
+
+// 根据分享链接获取帖子
+func GetPostByShareLink(shareLink string) (*Post, error) {
+	// 分割分享链接，获取唯一标识符部分
+	parts := strings.Split(shareLink, "/")
+	if len(parts) < 2 {
+		return nil, errors.New("无效的分享链接")
+	}
+
+	// 获取唯一标识符
+	linkIdentifier := parts[len(parts)-1]
+
+	// 根据唯一标识符查找帖子
+	var post Post
+	err := Db.Where("id = ?", linkIdentifier).First(&post).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 增加帖子的总浏览量
+	post.TotalViews++
+	Db.Save(&post)
+
+	return &post, nil
+}
+
 // 根据ID读取指定帖子
-func ReadPost(postID uint) (*Post, error) {
+func GetPostByID(postID uint) (*Post, error) {
 	var post Post
 	err := Db.First(&post, postID).Error
 	if err != nil {
